@@ -13,7 +13,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/dialora-ai/n8n-nodes.git"
+		"url": "https://github.com/dialora-ai/n8n-dialora"
 	},
 	"publishConfig": {
 		"access": "public"
