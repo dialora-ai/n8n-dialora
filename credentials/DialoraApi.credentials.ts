@@ -48,7 +48,7 @@ export class DialoraApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
-			url: '/api/v1/plans',
+			url: '/api/v1/calls',
 			qs: { limit: 1 },
 		},
 	};
