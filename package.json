@@ -1,6 +1,6 @@
 {
 	"name": "@dialora/n8n-nodes-dialora",
-	"version": "0.5.3",
+	"version": "0.5.4",
 	"description": "n8n community node for the Dialora API",
 	"license": "MIT",
 	"homepage": "",
