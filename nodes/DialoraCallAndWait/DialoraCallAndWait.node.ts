@@ -42,8 +42,8 @@ export class DialoraCallAndWait implements INodeType {
 		properties: [
 			{
 				displayName:
-					"Starts a call via <code>POST /api/v1/calls</code> and suspends this workflow. Dialora resumes it by posting the call result (transcript, summary, extractions) to a per-execution callback URL. Requires an API key with the <code>calls:write</code> scope — this endpoint is part of Dialora's Phase 2 API.",
-				name: 'phasePreviewNotice',
+					'Starts a call via <code>POST /api/v1/calls</code> and suspends this workflow. Dialora resumes it by posting the call event (<code>type</code>, <code>data.transcript</code>, <code>data.summary</code>, <code>data.extracted_data</code>) to a per-execution callback URL. Requires an API key with the <code>calls:write</code> scope.',
+				name: 'callAndWaitNotice',
 				type: 'notice',
 				default: '',
 			},
@@ -56,13 +56,22 @@ export class DialoraCallAndWait implements INodeType {
 				description: 'ID of the Dialora agent that should make the call',
 			},
 			{
+				displayName: 'From Number',
+				name: 'fromNumber',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: '+15550001111',
+				description: 'Provisioned, active Dialora number to call from, in E.164 format',
+			},
+			{
 				displayName: 'To Number',
 				name: 'toNumber',
 				type: 'string',
 				required: true,
 				default: '',
 				placeholder: '+15551234567',
-				description: 'Phone number to call, in E.164 format',
+				description: 'Phone number to call, in E.164 format (an extension may be appended)',
 			},
 			{
 				displayName: 'Options',
@@ -71,22 +80,6 @@ export class DialoraCallAndWait implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
-					{
-						displayName: 'Context',
-						name: 'context',
-						type: 'json',
-						default: '{}',
-						description: "JSON object passed to the agent as call context (e.g. the callee's name)",
-					},
-					{
-						displayName: 'From Number',
-						name: 'fromNumber',
-						type: 'string',
-						default: '',
-						placeholder: '+15550001111',
-						description:
-							"E.164 number owned by your tenant to call from. Leave empty to use the agent's assigned number.",
-					},
 					{
 						displayName: 'Max Wait (Minutes)',
 						name: 'maxWaitMinutes',
@@ -101,7 +94,16 @@ export class DialoraCallAndWait implements INodeType {
 						name: 'metadata',
 						type: 'json',
 						default: '{}',
-						description: 'JSON object echoed back verbatim in the completion payload',
+						description:
+							'JSON object of string values echoed back verbatim on the call object and webhook events (up to 50 keys, key ≤ 40 chars, value ≤ 500 chars)',
+					},
+					{
+						displayName: 'Variables',
+						name: 'variables',
+						type: 'json',
+						default: '{}',
+						description:
+							'JSON object of dynamic values injected into the agent for this call (e.g. customer_name). Not echoed back in responses.',
 					},
 				],
 			},
@@ -126,17 +128,17 @@ export class DialoraCallAndWait implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const agentId = this.getNodeParameter('agentId', 0) as string;
+		const fromNumber = this.getNodeParameter('fromNumber', 0) as string;
 		const toNumber = this.getNodeParameter('toNumber', 0) as string;
 		const options = this.getNodeParameter('options', 0, {}) as {
-			context?: string;
-			fromNumber?: string;
 			maxWaitMinutes?: number;
 			metadata?: string;
+			variables?: string;
 		};
 
 		const resumeUrl = this.evaluateExpression('{{ $execution.resumeUrl }}', 0) as string;
 
-		const parseJsonOption = (name: 'context' | 'metadata'): IDataObject | undefined => {
+		const parseJsonOption = (name: 'metadata' | 'variables'): IDataObject | undefined => {
 			const raw = options[name];
 
 			if (!raw || raw === '{}') return undefined;
@@ -153,17 +155,14 @@ export class DialoraCallAndWait implements INodeType {
 
 		const body: IDataObject = {
 			agent_id: agentId,
+			from_number: fromNumber.trim(),
 			to_number: toNumber,
-			completion_webhook_url: resumeUrl,
+			webhook_url: resumeUrl,
 		};
 
-		const fromNumber = options.fromNumber?.trim();
+		const variables = parseJsonOption('variables');
 
-		if (fromNumber) body.from_number = fromNumber;
-
-		const context = parseJsonOption('context');
-
-		if (context) body.context = context;
+		if (variables) body.variables = variables;
 
 		const metadata = parseJsonOption('metadata');
 

@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.dialoraCallAndWait",
+	"node": "@dialora/n8n-nodes-dialora.dialoraCallAndWait",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication", "Developer Tools"],

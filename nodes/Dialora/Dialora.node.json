@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.dialora",
+	"node": "@dialora/n8n-nodes-dialora.dialora",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication", "Developer Tools"],

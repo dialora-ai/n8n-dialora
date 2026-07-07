@@ -33,7 +33,7 @@ export class DialoraTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					"Copy this node's webhook URL into your Dialora agent's <b>Webhook</b> tool configuration (Agent → Tools → Generic Webhook). Dialora will POST the call result here when a call completes, starting this workflow with the transcript, summary, extractions, and analytics.",
+					"Copy this node's webhook URL into your Dialora agent's <b>Webhook</b> tool configuration (Agent → Tools → Generic Webhook), or pass it as <code>webhook_url</code> when creating a call via <code>POST /api/v1/calls</code>. Dialora will POST the call result here when a call ends, starting this workflow with the transcript, summary, and extractions.",
 				name: 'setupNotice',
 				type: 'notice',
 				default: '',
@@ -44,7 +44,7 @@ export class DialoraTrigger implements INodeType {
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to trigger only when the call status is "completed", ignoring other statuses',
+					'Whether to trigger only for completed calls (agent-webhook payloads with status "completed", or API events of type "call.completed"), ignoring other outcomes',
 			},
 		],
 	};
@@ -69,7 +69,11 @@ export class DialoraTrigger implements INodeType {
 		const body = this.getBodyData();
 		const onlyCompleted = this.getNodeParameter('onlyCompleted', false) as boolean;
 
-		if (onlyCompleted && body.status !== 'completed') {
+		// The agent's Generic Webhook tool posts a flat payload with a top-level `status`;
+		// the public API's webhook_url delivery posts an event envelope with a `type`.
+		const isCompleted = body.status === 'completed' || body.type === 'call.completed';
+
+		if (onlyCompleted && !isCompleted) {
 			// Acknowledge the delivery but do not start the workflow
 			return { noWebhookResponse: false };
 		}

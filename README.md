@@ -9,12 +9,12 @@ The package ships three nodes sharing one credential:
   scope — the **Agency** scope (tenant users, plans, subscriptions) is live today; **Account** resources
   (contacts, calls, campaigns) will appear as new entries in the same Resource dropdown when those APIs
   ship, with no breaking changes.
-- **Dialora Trigger** — starts a workflow when Dialora posts a call-completion webhook. Works today: copy
-  the node's webhook URL into your agent's Webhook tool configuration.
-- **Dialora Call & Wait** — starts an outbound call and suspends the workflow until the call completes;
-  the completion payload (transcript, summary, extractions, analytics) becomes the node's output.
-  Requires Dialora's Phase 2 `POST /api/v1/calls` endpoint (`calls:write` scope) — contract in
-  `backend/docs/public-api-calls-webhook-proposal.md`.
+- **Dialora Trigger** — starts a workflow when Dialora posts a call webhook. Copy the node's webhook URL
+  into your agent's Webhook tool configuration, or pass it as `webhook_url` when creating calls via the
+  API.
+- **Dialora Call & Wait** — starts an outbound call via `POST /api/v1/calls` (`calls:write` scope) and
+  suspends the workflow until the call ends; the call event (transcript, summary, extracted data) becomes
+  the node's output.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow
 automation platform.
@@ -65,29 +65,33 @@ APIs become public.
 
 ### Dialora Trigger
 
-Fires with the call result payload (`transcript`, `summary`, `extractions`, `analytics`, `status`,
-numbers, direction) whenever your Dialora agent finishes a call. Setup: activate the workflow, copy the
-production webhook URL from the trigger node, and paste it into the agent's **Webhook** tool
-configuration in Dialora. An **Only Completed Calls** toggle skips non-completed statuses.
+Fires with the call result whenever Dialora POSTs to the node's webhook URL. Two ways to wire it up:
+paste the URL into the agent's **Webhook** tool configuration in Dialora (flat payload: `transcript`,
+`summary`, `extractions`, `analytics`, `status`, numbers, direction), or pass it as `webhook_url` on
+`POST /api/v1/calls` (signed event envelope: `type`, `created_at`, `data`). An **Only Completed Calls**
+toggle skips everything except `status: "completed"` payloads and `call.completed` events.
 
 ### Dialora Call & Wait
 
-Starts an outbound call (`agent`, `to number`, optional `from number` / `context` / `metadata`), passing
-n8n's per-execution resume URL as the completion callback, then pauses the execution — no polling, no
-resources consumed while waiting. When Dialora posts the completion webhook, the workflow resumes with
-the call result as this node's output. An optional **Max Wait (Minutes)** resumes the workflow with its
-input data if no completion arrives in time. Requires an API key with the `calls:write` scope (Phase 2).
+Starts an outbound call (`agent`, `from number`, `to number`, optional `variables` / `metadata`), passing
+n8n's per-execution resume URL as the call's `webhook_url`, then pauses the execution — no polling, no
+resources consumed while waiting. When Dialora posts the terminal call event (`call.completed`,
+`call.failed`, `call.busy`, `call.no_answer`, `call.canceled`), the workflow resumes with the event as
+this node's output. An optional **Max Wait (Minutes)** resumes the workflow with its input data if no
+event arrives in time. Requires an API key with the `calls:write` scope. Note: Dialora only delivers
+webhooks to publicly reachable URLs — a local n8n instance needs a public `WEBHOOK_URL`.
 
 ## Credentials
 
 You need a Dialora API key. Mint one from the Agency dashboard under **API Keys**; the key looks like
 `dlr_live_…` (production) or `dlr_test_…` (non-production) and is granted scopes such as `users:read`,
-`users:write`, `plans:read`, `subscriptions:read`, `subscriptions:write`. The operation you run must be
-covered by the key's scopes, or the API returns `403 permission_denied`.
+`users:write`, `plans:read`, `subscriptions:read`, `subscriptions:write`, `calls:read`, `calls:write`.
+The operation you run must be covered by the key's scopes, or the API returns `403 permission_denied` —
+the **Call & Wait** node needs `calls:write`, and the credential test needs `calls:read`.
 
 In n8n, create a **Dialora API** credential and paste the key. Set **Base URL** to
 `https://api.dialora.ai` for production or `https://dev.api.dialora.ai` for development. The credential is
-sent as `Authorization: Bearer <key>` and tested against `GET /api/v1/plans`.
+sent as `Authorization: Bearer <key>` and tested against `GET /api/v1/calls?limit=1`.
 
 Dialora's public API uses a single `dlr_…` key format across all scopes — future account-level resources
 will use this same credential; a key's granted scopes determine which operations it can run.
@@ -127,6 +131,9 @@ spread it in `resources/index.ts` — the node, credential, and package wiring n
 
 ## Version history
 
+- **0.5.5** — Aligned **Dialora Call & Wait** with the live `POST /api/v1/calls` contract (`webhook_url`,
+  `variables`, required `from_number`); **Dialora Trigger** now also recognizes public API
+  `call.completed` events.
 - **0.5.0** — Added **Dialora Trigger** (call-completion webhook trigger) and **Dialora Call & Wait**
   (start a call, suspend until the completion webhook resumes the workflow).
 - **0.4.0** — Consolidated into a single **Dialora** node with resources grouped by API scope

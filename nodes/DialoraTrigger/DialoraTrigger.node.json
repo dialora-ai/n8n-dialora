@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.dialoraTrigger",
+	"node": "@dialora/n8n-nodes-dialora.dialoraTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication", "Developer Tools"],
