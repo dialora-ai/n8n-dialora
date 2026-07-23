@@ -1,4 +1,3 @@
-/* eslint-disable @n8n/community-nodes/node-usable-as-tool -- AI tool invocations cannot suspend an execution (putExecutionToWait), and the type forbids `usableAsTool: false` */
 import {
 	NodeApiError,
 	NodeConnectionTypes,
@@ -22,6 +21,7 @@ export class DialoraCallAndWait implements INodeType {
 		icon: { light: 'file:dialora.svg', dark: 'file:dialora.dark.svg' },
 		group: ['transform'],
 		version: 1,
+		usableAsTool: true,
 		subtitle: '=Call via agent {{$parameter["agentId"]}}',
 		description: 'Start an outbound Dialora call and pause the workflow until the call completes',
 		defaults: {

@@ -1,4 +1,3 @@
-/* eslint-disable @n8n/community-nodes/node-usable-as-tool -- trigger nodes cannot be AI tools, and the type forbids `usableAsTool: false` */
 import {
 	NodeConnectionTypes,
 	type IHookFunctions,
@@ -15,6 +14,7 @@ export class DialoraTrigger implements INodeType {
 		icon: { light: 'file:dialora.svg', dark: 'file:dialora.dark.svg' },
 		group: ['trigger'],
 		version: 1,
+		usableAsTool: true,
 		subtitle: 'Call Completed',
 		description: 'Starts a workflow when Dialora sends a call event webhook',
 		defaults: {
